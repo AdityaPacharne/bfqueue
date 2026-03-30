@@ -17,8 +17,8 @@ class BFQueue {
     {}
 
     void push(T t) noexcept {
-        size_t h = head.load(std::memory_order_relaxed) & (capacity - 1);
-        bfqueue[h] = std::move(t);
+        size_t h = head.load(std::memory_order_relaxed);
+        bfqueue[h & (capacity - 1)] = std::move(t);
         head.store(h + 1, std::memory_order_release);
     }
 
@@ -44,11 +44,10 @@ class BFQueue {
     }
 
     T* front() noexcept {
-        size_t t = tail.load(std::memory_order_relaxed) & (capacity - 1);
-        if(t == head_cache) {
-            head_cache = head.load(std::memory_order_acquire) & (capacity - 1);
-        }
-        return (t == head_cache) ? nullptr : &bfqueue[t];
+        size_t t = tail.load(std::memory_order_relaxed);
+        if(t == head_cache) [[unlikely]]
+            head_cache = head.load(std::memory_order_acquire);
+        return (t == head_cache) ? nullptr : &bfqueue[t & (capacity - 1)];
     }
 
     size_t size() {
