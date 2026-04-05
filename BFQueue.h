@@ -17,9 +17,7 @@ class BFQueue {
     {}
 
     void push(T t) noexcept {
-        size_t h = head.load(std::memory_order_relaxed);
-        bfqueue[h & (capacity - 1)] = std::move(t);
-        head.store(h + 1, std::memory_order_release);
+        emplace(std::move(t));
     }
 
     bool try_push(T t) noexcept {
@@ -33,8 +31,16 @@ class BFQueue {
         tail.store(t + 1, std::memory_order_release);
     }
 
-    void emplace(T t) noexcept {
-        push(std::move(t));
+    void emplace(T &t) noexcept {
+        size_t h = head.load(std::memory_order_relaxed);
+        bfqueue[h & (capacity - 1)] = t;
+        head.store(h + 1, std::memory_order_release);
+    }
+
+    void emplace(T &&t) noexcept {
+        size_t h = head.load(std::memory_order_relaxed);
+        bfqueue[h & (capacity - 1)] = std::move(t);
+        head.store(h + 1, std::memory_order_release);
     }
 
     bool try_emplace(T t) noexcept {
