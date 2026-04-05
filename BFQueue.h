@@ -51,7 +51,7 @@ class BFQueue {
 
     T* front() noexcept {
         size_t t = tail.load(std::memory_order_relaxed);
-        if(t == head_cache) [[unlikely]]
+        if(t == head_cache)
             head_cache = head.load(std::memory_order_acquire);
         return (t == head_cache) ? nullptr : &bfqueue[t & (capacity - 1)];
     }
@@ -59,7 +59,7 @@ class BFQueue {
     size_t size() {
         size_t t = tail.load(std::memory_order_acquire);
         size_t h = head.load(std::memory_order_acquire);
-        return (h - t) & (capacity - 1);
+        return (h - t)
     }
 
     bool empty() {
