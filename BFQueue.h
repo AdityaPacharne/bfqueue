@@ -27,20 +27,26 @@ class BFQueue {
     }
 
     void pop() noexcept {
-        size_t t = tail.load(std::memory_order_relaxed);
-        tail.store(t + 1, std::memory_order_release);
+        if(!empty()) {
+            size_t t = tail.load(std::memory_order_relaxed);
+            tail.store(t + 1, std::memory_order_release);
+        }
     }
 
     void emplace(T &t) noexcept {
-        size_t h = head.load(std::memory_order_relaxed);
-        bfqueue[h & (capacity - 1)] = t;
-        head.store(h + 1, std::memory_order_release);
+        if(!filled()) {
+            size_t h = head.load(std::memory_order_relaxed);
+            bfqueue[h & (capacity - 1)] = t;
+            head.store(h + 1, std::memory_order_release);
+        }
     }
 
     void emplace(T &&t) noexcept {
-        size_t h = head.load(std::memory_order_relaxed);
-        bfqueue[h & (capacity - 1)] = std::move(t);
-        head.store(h + 1, std::memory_order_release);
+        if(!filled()) {
+            size_t h = head.load(std::memory_order_relaxed);
+            bfqueue[h & (capacity - 1)] = std::move(t);
+            head.store(h + 1, std::memory_order_release);
+        }
     }
 
     bool try_emplace(T t) noexcept {
@@ -59,11 +65,11 @@ class BFQueue {
     size_t size() {
         size_t t = tail.load(std::memory_order_acquire);
         size_t h = head.load(std::memory_order_acquire);
-        return (h - t)
+        return (h - t);
     }
 
     bool empty() {
-        size_t t = tail.load(std::memory_order_acquire);
+        size_t t = tail.load(std::memory_order_relaxed);
         size_t h = head.load(std::memory_order_acquire);
         if(t == h) return true;
         return false;
@@ -71,7 +77,7 @@ class BFQueue {
 
     bool filled() {
         size_t t = tail.load(std::memory_order_acquire);
-        size_t h = head.load(std::memory_order_acquire);
+        size_t h = head.load(std::memory_order_relaxed);
         if((h - t) == capacity) return true;
         return false;
     }
