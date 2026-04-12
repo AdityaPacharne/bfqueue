@@ -1,20 +1,31 @@
+#include <cstring>
 #include <atomic>
 #include <vector>
+#include <memory>
 
 template <typename T>
 class BFQueue {
 
+    std::allocator<T> alloc;
+
     public:
+
     alignas(64) std::atomic<size_t> tail{0};
     size_t head_cache{};
     alignas(64) std::atomic<size_t> head{0};
-    alignas(64) size_t capacity{};
-    alignas(64) std::vector<T> bfqueue;
+    size_t tail_cache{};
 
-    BFQueue(size_t initial_capacity):
-        bfqueue(next_power_of_two(initial_capacity)),
-        capacity(next_power_of_two(initial_capacity))
-    {}
+    alignas(64) size_t capacity{};
+    alignas(64) T* bfqueue;
+
+    BFQueue(size_t initial_capacity): capacity(next_power_of_two(initial_capacity)) {
+        bfqueue = alloc.allocate(capacity);
+        memset(bfqueue, 0, capacity);
+    }
+
+    ~BFQueue() {
+        alloc.deallocate(bfqueue, capacity);
+    }
 
     void push(T t) noexcept {
         emplace(std::move(t));
@@ -27,7 +38,7 @@ class BFQueue {
     }
 
     void pop() noexcept {
-        if(!empty()) {
+        if(front() != nullptr) {
             size_t t = tail.load(std::memory_order_relaxed);
             tail.store(t + 1, std::memory_order_release);
         }
@@ -71,15 +82,14 @@ class BFQueue {
     bool empty() {
         size_t t = tail.load(std::memory_order_relaxed);
         size_t h = head.load(std::memory_order_acquire);
-        if(t == h) return true;
-        return false;
+        return (t == h);
     }
 
     bool filled() {
-        size_t t = tail.load(std::memory_order_acquire);
         size_t h = head.load(std::memory_order_relaxed);
-        if((h - t) == capacity) return true;
-        return false;
+        if(h - tail_cache == capacity)
+            tail_cache = tail.load(std::memory_order_acquire);
+        return (h - tail_cache == capacity);
     }
 
     size_t next_power_of_two(size_t n) {
